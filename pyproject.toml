@@ -1,0 +1,17 @@
+[project]
+name = "divesuccess"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "cartopy>=0.25.0",
+    "numpy>=2.4.4",
+    "pandas>=3.0.2",
+    "requests>=2.33.1",
+    "scikit-learn>=1.8.0",
+    "scipy>=1.17.1",
+    "tqdm>=4.67.3",
+    "xarray>=2026.4.0",
+    "xgboost>=3.2.0",
+]

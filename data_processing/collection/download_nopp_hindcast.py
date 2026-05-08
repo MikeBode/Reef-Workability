@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 import concurrent.futures
 import threading
+import pathlib
 
 BLOCK_SIZE = 8192 * 64
 
@@ -30,18 +31,19 @@ class DownloadProgress:
                 print(f"Completed: {self.completed_files}/{self.total_files} files | Remaining time: {remaining_time}")
 
 
-def download_file(url, folder, progress_tracker):
+def download_file(url: str, folder: pathlib.Path, progress_tracker: DownloadProgress) -> bool:
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
+        # Test if even needed.
+        #headers = {
+        #    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        #}
 
         session = requests.Session()
-        response = session.get(url, stream=True, headers=headers, timeout=30)
+        response = session.get(url, stream=True, timeout=30)
 
         if response.status_code == 200:
             filename = url.split('/')[-1]
-            filepath = os.path.join(folder, filename)
+            filepath: pathlib.Path = folder / filename
 
             total_size = int(response.headers.get('content-length', 0))
 
@@ -52,7 +54,7 @@ def download_file(url, folder, progress_tracker):
                             f.write(chunk)
                             progress_bar.update(len(chunk))
 
-            if total_size > 0 and os.path.getsize(filepath) != total_size:
+            if total_size > 0 and filepath.stat().st_size != total_size:
                 print(f"Size mismatch for {filename}. Download may be incomplete.")
                 return False
 
@@ -67,8 +69,9 @@ def download_file(url, folder, progress_tracker):
         return False
 
 
-def download_files(start_year, end_year, folder, max_workers=5):
-    os.makedirs(folder, exist_ok=True)
+def download_files(start_year: int, end_year: int, folder_str: str, max_workers: int = 5):
+    folder = pathlib.Path(folder_str)
+    folder.mkdir(parents=True, exist_ok=True)
 
     base_url = (
         "https://polar.ncep.noaa.gov/waves/hindcasts/nopp-phase2/{date}/partitions/"
@@ -109,7 +112,7 @@ def download_files(start_year, end_year, folder, max_workers=5):
 
 if __name__ == "__main__":
     start_year = 1990
-    end_year = 2000
+    end_year = 2008
     folder = 'nopp-phase2'
     concurrent_downloads = 5
 
