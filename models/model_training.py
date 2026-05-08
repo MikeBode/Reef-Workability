@@ -38,6 +38,7 @@ def preprocess_and_combine_data():
         'Vessel': 'source',
         'Region': 'region',
     }
+
     failed_visits.rename(
         columns={k: v for k, v in column_mapping.items() if k in failed_visits.columns},
         inplace=True
@@ -81,6 +82,7 @@ def preprocess_and_combine_data():
 
 
 def temporal_train_test_split(combined_df, test_size=0.25):
+    # Why a temporal split?
     combined_df_sorted = combined_df.sort_values('date').reset_index(drop=True)
     split_point = int(len(combined_df_sorted) * (1 - test_size))
 

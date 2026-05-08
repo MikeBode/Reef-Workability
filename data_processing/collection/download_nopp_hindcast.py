@@ -2,8 +2,6 @@
 # year range using concurrent HTTP requests with per-file progress tracking.
 
 import requests
-import os
-import time
 from datetime import datetime, timedelta
 from tqdm import tqdm
 import concurrent.futures
@@ -33,17 +31,17 @@ class DownloadProgress:
 
 def download_file(url: str, folder: pathlib.Path, progress_tracker: DownloadProgress) -> bool:
     try:
-        # Test if even needed.
-        #headers = {
-        #    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        #}
-
         session = requests.Session()
         response = session.get(url, stream=True, timeout=30)
 
         if response.status_code == 200:
             filename = url.split('/')[-1]
             filepath: pathlib.Path = folder / filename
+
+            if filepath.exists() and filepath.stat().st_size == int(response.headers.get('content-length', 0)):
+                print(f"File {filename} already exists and is complete. Skipping download.")
+                progress_tracker.update()
+                return True
 
             total_size = int(response.headers.get('content-length', 0))
 
@@ -69,8 +67,7 @@ def download_file(url: str, folder: pathlib.Path, progress_tracker: DownloadProg
         return False
 
 
-def download_files(start_year: int, end_year: int, folder_str: str, max_workers: int = 5):
-    folder = pathlib.Path(folder_str)
+def download_files(start_year: int, end_year: int, folder: pathlib.Path, max_workers: int = 5):
     folder.mkdir(parents=True, exist_ok=True)
 
     base_url = (
@@ -108,16 +105,3 @@ def download_files(start_year: int, end_year: int, folder_str: str, max_workers:
 
     if failed > 0:
         print("\nSome downloads failed. You may want to retry them.")
-
-
-if __name__ == "__main__":
-    start_year = 1990
-    end_year = 2008
-    folder = 'nopp-phase2'
-    concurrent_downloads = 5
-
-    start_time = datetime.now()
-    download_files(start_year, end_year, folder, max_workers=concurrent_downloads)
-    elapsed_time = datetime.now() - start_time
-
-    print(f"\nTotal execution time: {elapsed_time}")

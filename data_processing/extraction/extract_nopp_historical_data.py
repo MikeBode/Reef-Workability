@@ -8,7 +8,6 @@ import pandas as pd
 from scipy.interpolate import griddata
 import os
 import glob
-from datetime import datetime
 from tqdm import tqdm
 import traceback
 
