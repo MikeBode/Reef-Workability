@@ -105,7 +105,7 @@ def train_and_evaluate_models(combined_df, strategy='oversampling'):
     model_params = {
         "RandomForest": {
             'classifier__n_estimators': [1000],     # There's no need to try a small number of trees, since random forest performance should only ever improve with additional trees.
-            'classifier__max_depth': [None, 1, 2, 5, 10, 20],
+            'classifier__max_depth': [None, 1, 2, 5, 10],
             'classifier__min_samples_split': [2, 3, 5],
             'classifier__min_samples_leaf': [1, 2, 4]
         },
@@ -193,17 +193,6 @@ def train_and_evaluate_models(combined_df, strategy='oversampling'):
         try:
             search.fit(X_train, y_train)
             
-            # Now, let's refit *again* and optimize the thresholds.
-            optimal_params = search.best_params_
-            """threshold_search = TunedThresholdClassifierCV(
-                estimator=search.best_estimator_,
-                cv="prefit",
-                scoring='f1',
-                n_jobs=-1,
-                refit=False
-            )
-            threshold_search.fit(X_train, y_train)"""
-
             y_pred = search.predict(X_test)
 
             accuracy = accuracy_score(y_test, y_pred)
