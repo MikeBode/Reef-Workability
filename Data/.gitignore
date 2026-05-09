@@ -4,3 +4,5 @@ nopp-phase2*
 COTS INLOC Weather impacts.xlsx
 ReefCentroids.csv
 surveyData\[63\]WithWindWaveData_Final.csv
+meta/*
+meta
