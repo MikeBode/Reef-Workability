@@ -2,6 +2,8 @@
 # using temporal cross-validation with SMOTE oversampling or class-weighting to predict
 # reef survey workability from wave height and wind component features.
 
+from re import search
+
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -12,6 +14,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import brier_score_loss
+import ml_insights as mli
 import xgboost as xgb
 import pathlib
 import warnings
@@ -134,11 +137,6 @@ def train_and_evaluate_probability_models(combined_df):
         'XGBoost': xgb.XGBClassifier(random_state=42, eval_metric='logloss')
     }
 
-    best_model = None
-    best_score = 0
-    best_model_name = ""
-    model_results = []
-
     print(f"\n{'=' * 80}")
 
     def model_to_pipeline(model_name):
@@ -157,31 +155,34 @@ def train_and_evaluate_probability_models(combined_df):
         pipeline = model_to_pipeline(model_name)
 
         rs = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
         search = GridSearchCV(
             estimator=pipeline,
             param_grid=model_params[model_name],
             n_jobs=-1,
             verbose=0,
+            cv=rs,
             scoring="neg_log_loss"
         )
-
-        calibration = CalibratedClassifierCV(search, method='sigmoid', cv=rs, n_jobs=-1)
-        calibration.fit(X_train, y_train)
         
-        test_y_probs = calibration.predict_proba(X_test)[:, 1]
+        cv_preds_train = mli.cv_predictions(search, X_train, y_train, clone_model=True)
+        calib = mli.SplineCalib()
+        calib.fit(cv_preds_train, y_train)
+
+        search.fit(X_train, y_train)
+
+        test_y_probs = calib.calibrate(search.predict_proba(X_test))[:, 1]
         brier_score = brier_score_loss(y_test, test_y_probs)
         brief_reference_score = brier_score_loss(y_test, [y_test.mean()] * len(y_test))
         brier_skill_score = 1 - (brier_score / brief_reference_score) if brief_reference_score > 0 else 0
-        
         print(f"{model_name} Brier Skill Score: {brier_skill_score:.8f}")
+
 
 def main(data_directory: pathlib.Path):
     print("Preprocessing and combining datasets...")
     combined_df = preprocess_and_combine_data(data_directory)
 
-    print("Training models")
-    train_and_evaluate_probability_models(combined_df)
+    print("Training calibrated probability models.")
+    train_and_evaluate_probability_models(combined_df, use_fancy_calibration=True)
 
 if __name__ == "__main__":
     main(pathlib.Path("Data"))
