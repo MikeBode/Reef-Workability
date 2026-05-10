@@ -162,6 +162,6 @@ def merge_reef_datasets(locations_file, vessel_file, output_file=None):
     if output_file:
         vessel_df.to_excel(output_file, index=False)
         print(f"\nMerged dataset saved to {output_file}")
-        return None
+        return vessel_df
     else:
         return vessel_df

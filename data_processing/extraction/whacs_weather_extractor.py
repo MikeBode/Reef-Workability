@@ -4,29 +4,22 @@ import numpy as np
 import xarray as xr
 
 class WhacsWeatherExtractor:
-    def __init__(self):
+    def __init__(self, data_base_path):
+        self.data_base_path = pathlib.Path(data_base_path)
+
         self.dataset_cache = {}
         self.kdtree_cache = {}
         self.grid_cache = {}
 
-    def get_nc_file_path(self, parameter_folder, date):
+    def get_nc_file_path(self, parameter, date):
         year_month = date.strftime('%Y%m')
 
-        if parameter_folder == "SignificantWaveHeight":
-            prefix = "hs"
-        elif parameter_folder == "UWind":
-            prefix = "uwnd"
-        elif parameter_folder == "VWind":
-            prefix = "vwnd"
-        else:
-            raise ValueError(f"Unknown parameter folder: {parameter_folder}")
-
-        parameter_path = pathlib.Path(parameter_folder)
+        parameter_path: pathlib.Path = self.data_base_path / parameter
         if not parameter_path.exists():
             return None
 
         for file in parameter_path.iterdir():
-            if file.is_file() and file.name.startswith(prefix) and year_month in file.name:
+            if file.is_file() and file.name.startswith(parameter) and year_month in file.name:
                 return str(file)
 
         return None
@@ -62,6 +55,10 @@ class WhacsWeatherExtractor:
                 return None
 
         return self.dataset_cache[cache_key]
+    
+    def extract_batch_6_hours_mean_by_parameter(self, parameter, date, coords_array):
+        nc_file_path = self.get_nc_file_path(parameter, date)
+        return self.extract_batch_6_hours_mean(nc_file_path, date, coords_array, parameter)
 
     def extract_batch_6_hours_mean(self, nc_file_path, date, coords_array, param_name):
         ds = self.load_and_cache_dataset(nc_file_path)
@@ -82,11 +79,11 @@ class WhacsWeatherExtractor:
             tree = self.kdtree_cache[cache_key]
             grid_info = self.grid_cache[cache_key]
 
-            distances, indices = tree.query(coords_array)
+            _, indices = tree.query(coords_array)
             closest_indices = [np.unravel_index(idx, grid_info['lon_grid'].shape) for idx in indices]
 
             results = []
-            for i, (closest_i, closest_j) in enumerate(closest_indices):
+            for closest_i, closest_j in closest_indices:
                 try:
                     mean_value = ds_subset[param_name].isel(
                         latitude=closest_i, longitude=closest_j

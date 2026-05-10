@@ -1,20 +1,17 @@
 # Extracts WHACS hindcast wave and wind data for all reef centroids across multiple years
 # for specific calendar days, writing per-day CSV outputs to a designated folder.
 
+# TODO: Not sure what the point of this file is.
+
 import pandas as pd
 import numpy as np
-import xarray as xr
 import os
-from datetime import datetime, timedelta
-from scipy.spatial import KDTree
-from calendar import monthrange
-from collections import defaultdict
-from multiprocessing import Pool, cpu_count
-import multiprocessing as mp
+from datetime import datetime
+from whacs_weather_extractor import WhacsWeatherExtractor
 
 
 def process_specific_date(reef_df, month, day, start_year, end_year, output_folder):
-    extractor = WeatherExtractor()
+    extractor = WhacsWeatherExtractor()
 
     try:
         print(f"\n=== Processing {month}-{day} across years {start_year}-{end_year} ===")

@@ -24,9 +24,8 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
         whacs_milestone.touch()
 
     # Now, we merge the coordinates from our surveyData and our COTS data.
-    merge_reef_datasets(download_folder / 'surveyData[63].csv',
-        download_folder / 'COTS INLOC Weather impacts.xlsx',
-        download_folder / 'COTS INLOC Weather impacts-WithCoordinates.xlsx'
+    cots_with_coords = merge_reef_datasets(download_folder / 'surveyData[63].csv',
+        download_folder / 'COTS INLOC Weather impacts.xlsx'
     )
 
     # Finally, let's add wind wave data to the SurveyData.
