@@ -23,7 +23,7 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
     whacs_milestone = download_folder / "meta" / "whacs_download_complete.txt"
     if not whacs_milestone.exists():
         year_months = [(year, month) for year in range(2020, 2024) for month in range(1, 13)]
-        download_whacs_files(year_months, download_folder / "whacs", max_workers=3)    # For whatever reason, in my experience the WHACs data downloads at very low bitrates when done simultaneously.
+        download_whacs_files(year_months, download_folder / "whacs", max_workers=3)
         whacs_milestone.parent.mkdir(parents=True, exist_ok=True)
         whacs_milestone.touch()
 

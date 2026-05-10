@@ -3,6 +3,8 @@ from datetime import datetime
 import requests
 import pathlib
 from tqdm import tqdm
+from urllib3.util import Retry
+from requests.adapters import HTTPAdapter
 
 class DownloadProgress:
     def __init__(self):
@@ -21,10 +23,22 @@ class DownloadProgress:
                 remaining_time = estimated_total_time - elapsed_time
                 print(f"Completed: {self.completed_files}/{self.total_files} files | Remaining time: {remaining_time}")    
 
+BLOCKSIZE = 1024 * 1024  # 1 MB
+
 def download_file(url: str, folder: pathlib.Path, progress_tracker: DownloadProgress) -> bool:
     try:
         session = requests.Session()
-        response = session.get(url, stream=True, timeout=30)
+
+        retries = Retry(
+            total=3,
+            backoff_factor=0.1,
+            status_forcelist=[502, 503, 504],
+            allowed_methods={'POST'},
+        )
+
+        session.mount('https://', HTTPAdapter(max_retries=retries))
+
+        response = session.get(url, stream=True, timeout=30, )
 
         filename = url.split('/')[-1]
         filepath: pathlib.Path = folder / filename
@@ -50,7 +64,7 @@ def download_file(url: str, folder: pathlib.Path, progress_tracker: DownloadProg
 
             with tqdm(total=total_size, unit='B', unit_scale=True, desc=filename) as progress_bar:
                 with open(filepath, 'wb') as f:
-                    for chunk in response.iter_content():
+                    for chunk in response.iter_content(BLOCKSIZE):
                         if chunk:
                             f.write(chunk)
                             progress_bar.update(len(chunk))

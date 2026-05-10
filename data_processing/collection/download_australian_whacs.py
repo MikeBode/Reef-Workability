@@ -7,6 +7,7 @@ from data_processing.collection.download_tools import DownloadProgress, download
 from tqdm import tqdm
 import concurrent.futures
 import pathlib
+import calendar
 
 def download_whacs_files(year_months: list[tuple[int, int]], base_folder: pathlib.Path, max_workers: int = 5):
     base_url = "https://data-cbr.csiro.au/thredds/fileServer/catch_all/ACS_WP3_WHACS/ACS_hindcast_DRS/gridded/release/WP3/WHACS/BoM-CSIRO/hindcast/ERA5/ERA5/WHACS/WWIII-v6.07/aust-R16/1hr"
@@ -14,8 +15,10 @@ def download_whacs_files(year_months: list[tuple[int, int]], base_folder: pathli
     url_files = []
 
     for year, month in year_months:
+        month_range = calendar.monthrange(year, month)
+
         for var in variables:
-            url = f"{base_url}/{var}/{var}_WHACS_hindcast_WHACS_ERA5_1hr_{year}{month:02d}010000-{year}{month:02d}312300.nc"
+            url = f"{base_url}/{var}/{var}_WHACS_hindcast_WHACS_ERA5_1hr_{year}{month:02d}010000-{year}{month:02d}{month_range[1]}2300.nc"
             url_files.append((url, base_folder / var))
 
     progress_tracker = DownloadProgress()

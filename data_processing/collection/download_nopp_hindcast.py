@@ -17,7 +17,9 @@ def download_files(start_year: int, end_year: int, folder: pathlib.Path, max_wor
 
     download_tasks = []
     for year in range(start_year, end_year + 1):
-        for month in range(1, 13):
+        start_month = 1
+        
+        for month in range(start_month, 13):
             date = f"{year}{month:02d}"
             url = base_url.format(date=date)
             download_tasks.append(url)
