@@ -1,5 +1,6 @@
 # Merges reef visit records with weather station data using a spatial grid search
 # and KDTree nearest-neighbour lookup within a configurable radius and date window.
+# TODO: Figure out why this exists.
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta

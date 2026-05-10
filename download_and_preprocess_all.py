@@ -1,6 +1,10 @@
 from data_processing.collection.download_nopp_hindcast import download_files as download_nopp_hindcast_files
 from data_processing.collection.download_australian_whacs import download_whacs_files
 from data_processing.processing.merge_reef_coordinates import merge_reef_datasets
+from data_processing.extraction.extract_whacs_weather_failed_visits import construct_csv_with_weather_data
+from data_processing.processing.merge_visit_dfs import merge_visit_dfs
+import pandas as pd
+
 import pathlib
 
 # TODO: Look into failures. Make it throw on failure, accumulate all throws at end.
@@ -27,11 +31,14 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
     cots_with_coords = merge_reef_datasets(download_folder / 'surveyData[63].csv',
         download_folder / 'COTS INLOC Weather impacts.xlsx'
     )
+    survey_data = pd.read_csv(download_folder / 'surveyData[63].csv')
 
-    # Finally, let's add wind wave data to the SurveyData.
-    
+    # We add wind/wave data to both of our datasets.
+    cots_with_coords_and_weather = construct_csv_with_weather_data(cots_with_coords, download_folder / "whacs")
+    survey_data_with_weather = construct_csv_with_weather_data(survey_data, download_folder / "whacs")
 
-
+    merged_df = merge_visit_dfs([survey_data_with_weather, cots_with_coords_and_weather], ["surveyData", "COTS"], [True, False])
+    merged_df.to_csv(download_folder / "combined_visits_with_weather.csv", index=False)
 
 if __name__ == "__main__":
     download_and_process_all_data()
