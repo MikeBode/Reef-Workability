@@ -7,15 +7,10 @@ import re
 
 
 def normalize_reef_name(name):
-    if pd.isna(name):
-        return ''
+    name = str(name).lower()
 
-    name = str(name)
-
-    if not name.strip():
-        return ''
-
-    name = name.lower()
+    if name == "Batt 16-029".lower():
+        pass
 
     reef_number = re.search(r'(\d+-\d+[a-z]?)', name)
     reef_number = reef_number.group(1) if reef_number else ''
@@ -40,8 +35,26 @@ def normalize_reef_name(name):
 
     return result
 
+# Where there are multiple potential matches, we manually choose.
+# TODO: Review these, check resonably central.
+MULTI_MATCH_DICT = {
+    "fitzroy island": "fitzroy island 16-054a",
+    "kelso": "kelso 18-030",
+    "little lizard": "lizard island 14-116a",
+    "lizard island": "lizard island 14-116a",
+    "mackay": "mackay 16-015"
+}
+
+def manual_multiple_match_reconcilliation(name):
+    if name in MULTI_MATCH_DICT:
+        return MULTI_MATCH_DICT[name]
+    return None
 
 def get_best_match(name, lookup_dict):
+    manual_match = manual_multiple_match_reconcilliation(name)
+    if manual_match:
+        return manual_match
+
     if name in lookup_dict:
         return name
 
@@ -53,21 +66,17 @@ def get_best_match(name, lookup_dict):
         if base_name and (base_name in k or k in base_name)
     ]
 
-    if potential_matches:
-        return sorted(potential_matches, key=lambda x: abs(len(x) - len(name)))[0]
+    if len(potential_matches) > 1:
+        raise Exception(f"Multiple potential matches found for '{name}': {potential_matches}")
 
-    for key in lookup_dict.keys():
-        if name in key or key in name:
-            return key
+    if len(potential_matches) == 1:
+        if potential_matches[0] == '':
+            raise Exception(f"Potential match for '{name}' is an empty string.")
 
-    name_part = re.sub(r'\d+-\d+[a-z]?', '', name).strip()
-    if name_part != name:
-        for key in lookup_dict.keys():
-            if name_part in key:
-                return key
+        if potential_matches:
+            return potential_matches[0]
 
     return None
-
 
 def merge_reef_datasets(locations_file, vessel_file, output_file=None):
     locations_df = pd.read_csv(locations_file)
@@ -75,21 +84,11 @@ def merge_reef_datasets(locations_file, vessel_file, output_file=None):
 
     print(f"Loaded locations dataset with {len(locations_df)} rows")
     print(f"Loaded vessel dataset with {len(vessel_df)} rows")
-
-    nan_count = locations_df['reefName'].isna().sum()
-    if nan_count > 0:
-        print(f"Warning: Found {nan_count} NaN values in reefName column")
+    
+    locations_df.dropna(subset=['reefName'], inplace=True)
 
     locations_df['normalized_name'] = locations_df['reefName'].apply(normalize_reef_name)
     vessel_df['normalized_name'] = vessel_df['Reef'].apply(normalize_reef_name)
-
-    print("\nNormalization examples from location dataset:")
-    for i in range(min(5, len(locations_df))):
-        print(f"Original: {locations_df.iloc[i]['reefName']} -> Normalized: {locations_df.iloc[i]['normalized_name']}")
-
-    print("\nNormalization examples from vessel dataset:")
-    for i in range(min(5, len(vessel_df))):
-        print(f"Original: {vessel_df.iloc[i]['Reef']} -> Normalized: {vessel_df.iloc[i]['normalized_name']}")
 
     valid_locations = locations_df[locations_df['normalized_name'] != '']
 
@@ -100,7 +99,7 @@ def merge_reef_datasets(locations_file, vessel_file, output_file=None):
 
     print(f"\nCreated coordinate lookup for {len(coord_lookup)} unique normalized reef names")
 
-    vessel_df['matched_with'] = ''
+    vessel_df['matched_with'] = pd.NA
 
     def get_coordinates(row):
         normalized_name = row['normalized_name']
@@ -108,6 +107,7 @@ def merge_reef_datasets(locations_file, vessel_file, output_file=None):
             return pd.Series([np.nan, np.nan])
 
         if normalized_name in coord_lookup:
+            vessel_df.loc[row.name, 'matched_with'] = normalized_name
             return pd.Series([coord_lookup[normalized_name]['x'], coord_lookup[normalized_name]['y']])
 
         best_match = get_best_match(normalized_name, coord_lookup)
@@ -150,10 +150,3 @@ def merge_reef_datasets(locations_file, vessel_file, output_file=None):
         return None
     else:
         return vessel_df
-
-
-merged_df = merge_reef_datasets(
-    'Data/surveyData[63].csv',
-    'COTS INLOC Weather impacts.xlsx',
-    'COTS INLOC Weather impacts-WithCoor.xlsx'
-)

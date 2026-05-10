@@ -24,3 +24,12 @@ def download_whacs_files(year_months: list[tuple[int, int]], base_folder: pathli
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(download_file, url, folder, progress_tracker) for url, folder in url_files]
         concurrent.futures.wait(futures)
+
+        exceptions = []
+        for future in futures:
+            ex = future.exception()  # This will raise any exceptions that occurred during download
+            if ex:
+                exceptions.append(ex)
+        
+        if len(exceptions) > 0:
+            raise ExceptionGroup("One or more downloads failed", exceptions)

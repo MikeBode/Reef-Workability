@@ -44,4 +44,9 @@ def download_files(start_year: int, end_year: int, folder: pathlib.Path, max_wor
     print(f"- Failed: {failed}")
 
     if failed > 0:
-        print("\nSome downloads failed. You may want to retry them.")
+        exceptions = []
+        for future in futures:
+            ex = future.exception()  # This will raise any exceptions that occurred during download
+            if ex:
+                exceptions.append(ex)
+        raise ExceptionGroup("One or more downloads failed", exceptions)
