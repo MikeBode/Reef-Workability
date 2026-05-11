@@ -1,7 +1,7 @@
 from data_processing.collection.download_nopp_hindcast import download_files as download_nopp_hindcast_files
 from data_processing.collection.download_australian_whacs import download_whacs_files
 from data_processing.processing.merge_reef_coordinates import merge_reef_datasets
-from data_processing.extraction.extract_whacs_weather_failed_visits import construct_csvs_with_weather_data
+from data_processing.extraction.extract_whacs_for_visits import construct_csvs_with_weather_data
 from data_processing.processing.merge_visit_dfs import merge_visit_dfs
 import pandas as pd
 from models.model_training import train_and_evaluate_probability_models
@@ -23,8 +23,8 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
     print("Starting WHACS download, this may take a long while...")
     whacs_milestone = download_folder / "meta" / "whacs_download_complete.txt"
     if not whacs_milestone.exists():
-        year_months = [(year, month) for year in range(2020, 2024) for month in range(1, 13)]
-        download_whacs_files(year_months, download_folder / "whacs", max_workers=3)
+        year_months = [(year, month) for year in range(2005, 2024) for month in range(1, 13)]
+        download_whacs_files(year_months, download_folder / "whacs", max_workers=5)
         whacs_milestone.parent.mkdir(parents=True, exist_ok=True)
         whacs_milestone.touch()
 

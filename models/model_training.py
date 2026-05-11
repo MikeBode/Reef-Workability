@@ -69,7 +69,7 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
         },
         "LogisticRegression": {
             'classifier__C': [0.01, 0.1, 1, 10, 100],
-            'classifier__penalty': ['l1', 'l2'],
+            'classifier__l1_ratio': [0, 0.5, 1],
         },
         "SVM": {
             'classifier__C': [0.1, 1, 10, 100],
@@ -87,7 +87,7 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
 
     models = {
         'RandomForest': RandomForestClassifier(random_state=42),
-        'LogisticRegression': LogisticRegression(random_state=42, max_iter=10000),
+        'LogisticRegression': LogisticRegression(random_state=42, max_iter=10000, solver="saga"),
         'SVM': SVC(probability=True, random_state=42),
         'XGBoost': xgb.XGBClassifier(random_state=42, eval_metric='logloss')
     }
@@ -105,11 +105,8 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
                 ('classifier', models[model_name])
             ])
     
-    best_brier_skill_score = float('-inf')
-    best_model = None
-
-    for model_name, _ in models.items():
-        print(f"\nTraining {model_name}")
+    def train_model_with_name(model_name, data_X, data_Y):
+        print(f"\nTraining {model_name} on {len(data_X)} samples with {data_Y.sum()} positive cases")
         pipeline = model_to_pipeline(model_name)
 
         rs = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -122,22 +119,38 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
             scoring="neg_log_loss"
         )
         
-        cv_preds_train = mli.cv_predictions(search, X_train, y_train, clone_model=True)
+        cv_preds_train = mli.cv_predictions(search, data_X, data_Y, clone_model=True)
         calib = mli.SplineCalib()
-        calib.fit(cv_preds_train, y_train)
-        search.fit(X_train, y_train)
+        calib.fit(cv_preds_train, data_Y)
+        search.fit(data_X, data_Y)
         model = ModelAndCalibrationCurve(model_name, search.best_estimator_, calib)
 
+        return model
+
+    def get_brier_skill_score(model):
         test_y_probs = model.predict_proba(X_test)[:, 1]
         brier_score = brier_score_loss(y_test, test_y_probs)
         brief_reference_score = brier_score_loss(y_test, [y_test.mean()] * len(y_test))
-        brier_skill_score = 1 - (brier_score / brief_reference_score) if brief_reference_score > 0 else 0
+        return 1 - (brier_score / brief_reference_score) if brief_reference_score > 0 else 0
+
+    best_brier_skill_score = float('-inf')
+    best_model_name = None
+
+    for model_name, _ in models.items():
+        model = train_model_with_name(model_name, X_train, y_train)
+        brier_skill_score = get_brier_skill_score(model)
+
         print(f"{model_name} Brier Skill Score: {brier_skill_score:.8f}")
 
         if brier_skill_score > best_brier_skill_score:
             best_brier_skill_score = brier_skill_score
-            best_model = model
+            best_model_name = model_name
     
-    print(f"Saving best model: {best_model}, with Brier Skill Score: {best_brier_skill_score:.8f}, into {model_save_path}")
+    # Retraining our best model on the full dataset.
+    best_model = train_model_with_name(best_model_name, combined_df[features], combined_df['was_successful'].astype(int))
+    print(f"Saving best model: {best_model}, with Testing Brier Skill Score: {best_brier_skill_score:.8f}, into {model_save_path}")
+
+    # Quick sanity test
+    print(f"Sanity test, Best Model Brier (On test) = {get_brier_skill_score(best_model):.8f}")
     with open(model_save_path, 'wb') as f:
         pickle.dump(best_model, f)
