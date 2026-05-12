@@ -50,9 +50,9 @@ def construct_csvs_with_weather_data(cots_dfs_with_coords: list[pd.DataFrame], w
             x_coord = row['x']
             y_coord = row['y']
 
-            wave_height = whacs_extractor.extract_batch_6_hours_mean_by_parameter("hs", date, np.array([[x_coord, y_coord]]))[0]
-            u_wind = whacs_extractor.extract_batch_6_hours_mean_by_parameter("uwnd", date, np.array([[x_coord, y_coord]]))[0]
-            v_wind = whacs_extractor.extract_batch_6_hours_mean_by_parameter("vwnd", date, np.array([[x_coord, y_coord]]))[0]
+            wave_height = whacs_extractor.extract_batch_daytime_hours_mean_by_parameter("hs", date, np.array([[x_coord, y_coord]]))[0]
+            u_wind = whacs_extractor.extract_batch_daytime_hours_mean_by_parameter("uwnd", date, np.array([[x_coord, y_coord]]))[0]
+            v_wind = whacs_extractor.extract_batch_daytime_hours_mean_by_parameter("vwnd", date, np.array([[x_coord, y_coord]]))[0]
 
             cots_df.at[idx, 'wave_height'] = wave_height
             cots_df.at[idx, 'u_wind'] = u_wind

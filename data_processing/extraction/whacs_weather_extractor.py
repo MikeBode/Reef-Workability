@@ -56,19 +56,19 @@ class WhacsWeatherExtractor:
 
         return self.dataset_cache[cache_key]
     
-    def extract_batch_6_hours_mean_by_parameter(self, parameter, date, coords_array):
+    def extract_batch_daytime_hours_mean_by_parameter(self, parameter, date, coords_array):
         nc_file_path = self.get_nc_file_path(parameter, date)
-        return self.extract_batch_6_hours_mean(nc_file_path, date, coords_array, parameter)
+        return self.extract_batch_daytime_hours_mean(nc_file_path, date, coords_array, parameter)
 
-    def extract_batch_6_hours_mean(self, nc_file_path, date, coords_array, param_name):
+    def extract_batch_daytime_hours_mean(self, nc_file_path, date, coords_array, param_name):
         ds = self.load_and_cache_dataset(nc_file_path)
         if ds is None:
             return np.full(len(coords_array), np.nan)
 
         try:
             date_str = date.strftime('%Y-%m-%d')
-            start_time = f"{date_str}T06:00:00"
-            end_time = f"{date_str}T12:00:00"
+            start_time = f"{date_str}T09:00:00"
+            end_time = f"{date_str}T14:00:00"
 
             ds_subset = ds.sel(time=slice(start_time, end_time))
 

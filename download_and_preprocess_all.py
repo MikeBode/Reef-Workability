@@ -44,7 +44,10 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
 
     # Training our models.
     best_model_path = download_folder / "best_model.pickle"
-    train_and_evaluate_probability_models(merged_df, best_model_path)
+    if not best_model_path.exists():
+        train_and_evaluate_probability_models(merged_df, best_model_path)
+    else:
+        print("Best model already exists, skipping training.")
 
     # Now, let's do the setup for batch workability prediction.
     centroid_whacs_path = download_folder / "centroid_historical_whacs.csv"
@@ -55,15 +58,21 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
     else:
         print("Extracting historical WHACS data for centroids, this may take a long while...")
         historical_centroid_weather_data = extract_historical_whacs_for_centroids(
-            centroids_path=pathlib.Path(__file__).parent / "Data" / "ReefCentroids.txt",
-            whacs_base_path=download_folder / "whacs"
+            pathlib.Path(__file__).parent / "Data" / "ReefCentroids.csv",
+            download_folder / "whacs",
+            download_folder / "partial_historical_whacs"
         )
         historical_centroid_weather_data.to_csv(centroid_whacs_path, index=False)
     
-    # Predict workability for each centroid-month combination, using the best model.
-    print("Predicting workability for each centroid-month combination, this also may take a long while...")
-    predicted_workability = predict_success_prob_for_reef_visits(best_model_path, historical_centroid_weather_data)
-    predicted_workability.to_csv(download_folder / "predicted_workability_for_centroids.csv", index=False)
-    
+    # Predict workability for each centroid-day combination, using the best model.
+    predicted_workability_path = download_folder / "predicted_workability_for_centroids.csv"
+    if predicted_workability_path.exists():
+        print(f"Loading cached predicted workability for centroids from {predicted_workability_path}")
+        predicted_workability = pd.read_csv(predicted_workability_path)
+    else:
+        print("Predicting workability for each centroid-day combination, this also may take a long while...")
+        predicted_workability = predict_success_prob_for_reef_visits(best_model_path, historical_centroid_weather_data)
+        predicted_workability.to_csv(download_folder / "predicted_workability_for_centroids.csv", index=False)
+
 if __name__ == "__main__":
     download_and_process_all_data()

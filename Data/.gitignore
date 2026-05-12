@@ -12,3 +12,6 @@ whacs/*
 whacs
 combined_visits_with_weather.csv
 best_calibrated_model.pkl
+partial_historical_whacs/*
+partial_historical_whacs
+*.pickle

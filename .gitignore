@@ -13,3 +13,6 @@ wheels/
 # Others
 notes/*
 notes
+
+PlotOutputs/*
+PlotOutputs
