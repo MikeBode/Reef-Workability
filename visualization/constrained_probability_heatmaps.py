@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import pathlib
 
-def generate_plot_for_month_waveheight(wave_height, month, constraint_analysis: WindWaveConstraintAnalysis, model_and_calibration_curve: ModelAndCalibrationCurve, maximum_u_wind, maximum_v_wind, save_directory=pathlib.Path("PlotOutputs/heatmaps")):
+def generate_plot_for_month_waveheight(wave_height, month, constraint_analysis: WindWaveConstraintAnalysis, model_and_calibration_curve: ModelAndCalibrationCurve, maximum_u_wind, maximum_v_wind, save_directory):
     plt.title(f"Predicted Workability Probability for Month {month} at Wave Height {wave_height:.2f}m")
     plt.xlabel("U Wind Component (m/s?)")
     plt.ylabel("V Wind Component (m/s?)")
@@ -46,16 +46,14 @@ def generate_plot_for_month_waveheight(wave_height, month, constraint_analysis: 
     plt.savefig(save_directory / f"workability_heatmap_month_{month}_waveheight_{wave_height:.2f}.png")
     pass
 
-def plot_workability_heatmaps_with_constraints(best_model_path, centroid_weather_data):
+def plot_workability_heatmaps_with_constraints(best_model_path, centroid_weather_data, save_directory=pathlib.Path("PlotOutputs/heatmaps")):
     with open(best_model_path, 'rb') as f:
         best_model = pickle.load(f)
 
     constraint_analysis = WindWaveConstraintAnalysis(centroid_weather_data)
     constraint_analysis.compute_constraints()
 
-    maximum_wave_height = centroid_weather_data['hs'].max()
-    maximum_u_wind = centroid_weather_data['u_wind'].max()
-    maximum_v_wind = centroid_weather_data['v_wind'].max()
-
-
     for month in range(1, 13):
+        wave_height_quantiles = constraint_analysis.get_quantiles_for_month(month, "wave_height")
+        for wave_height in np.arange(int(wave_height_quantiles[0]*10)/10, int(wave_height_quantiles[1]*10)/10 + 0.1, 0.1):
+            generate_plot_for_month_waveheight(wave_height, month, constraint_analysis, best_model, maximum_u_wind=20, maximum_v_wind=20, save_directory=save_directory)

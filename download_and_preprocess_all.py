@@ -7,6 +7,7 @@ import pandas as pd
 from models.model_training import train_and_evaluate_probability_models
 from data_processing.extraction.extract_historical_whacs_for_centroids import extract_historical_whacs_for_centroids
 from data_processing.processing.predict_reef_date_success_probabilities import predict_success_prob_for_reef_visits
+from visualization.constrained_probability_heatmaps import plot_workability_heatmaps_with_constraints
 
 import pathlib
 
@@ -73,6 +74,9 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
         print("Predicting workability for each centroid-day combination, this also may take a long while...")
         predicted_workability = predict_success_prob_for_reef_visits(best_model_path, historical_centroid_weather_data)
         predicted_workability.to_csv(download_folder / "predicted_workability_for_centroids.csv", index=False)
+    
+    # Output graphs
+    plot_workability_heatmaps_with_constraints(best_model_path, historical_centroid_weather_data, save_directory=pathlib.Path("PlotOutputs/heatmaps"))
 
 if __name__ == "__main__":
     download_and_process_all_data()
