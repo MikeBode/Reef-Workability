@@ -2,61 +2,18 @@
 # using temporal cross-validation with SMOTE oversampling or class-weighting to predict
 # reef survey workability from wave height and wind component features.
 
-from re import search
-
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV, train_test_split, StratifiedKFold
-from sklearn.preprocessing import StandardScaler
+from models.model_training import ModelAndCalibrationCurve, AbsWind
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import brier_score_loss
 import ml_insights as mli
 import xgboost as xgb
-from sklearn.base import BaseEstimator, TransformerMixin
 import pathlib
 import pickle
-
-class SinCosMonths(BaseEstimator, TransformerMixin):
-    def fit(self, X, y=None):
-        return self
-    
-    def transform(self, X):
-        X_new = X.copy()
-        X_new["month_sin"] = np.sin(2 * np.pi * X_new["month"] / 12)
-        X_new["month_cos"] = np.cos(2 * np.pi * X_new["month"] / 12)
-
-        X_new.drop(columns=["month"], inplace=True)
-        return X_new
-    
-class AbsWind(BaseEstimator, TransformerMixin):
-    def fit(self, X, y=None):
-        return self
-    
-    def transform(self, X):
-        X_new = X.copy()
-        X_new["west_wind"] = X_new["u_wind"].apply(lambda x: max(0, -x))
-        X_new["east_wind"] = X_new["u_wind"].apply(lambda x: max(0, x))
-        X_new["south_wind"] = X_new["v_wind"].apply(lambda x: max(0, -x))
-        X_new["north_wind"] = X_new["v_wind"].apply(lambda x: max(0, x))
-
-        X_new.drop(columns=["u_wind", "v_wind"], inplace=True)
-        return X_new
-
-
-class ModelAndCalibrationCurve:
-    def __init__(self, model_name, model, calibration_curve):
-        self.model_name = model_name
-        self.model = model
-        self.calibration_curve = calibration_curve
-    
-    def predict_proba(self, X):
-        return self.calibration_curve.calibrate(self.model.predict_proba(X))
-
-    def __repr__(self) -> str:
-        return f"ModelAndCalibrationCurve(model_name={self.model_name}"
+from sklearn.base import BaseEstimator, TransformerMixin
     
 MODEL_FEATURES = ['wave_height', 'u_wind', 'v_wind', 'wind_magnitude', 'month']
 
@@ -94,15 +51,6 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
             'classifier__min_samples_split': [2, 3, 5],
             'classifier__min_samples_leaf': [1, 2, 4]
         },
-        "LogisticRegression": {
-            'classifier__C': [0.01, 0.1, 1, 10, 100],
-            'classifier__l1_ratio': [0, 0.5, 1],
-        },
-        "SVM": {
-            'classifier__C': [0.1, 1, 10, 100],
-            'classifier__gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1],
-            'classifier__kernel': ['rbf', 'sigmoid']
-        },
         "XGBoost": {
             'classifier__n_estimators': [10, 20, 50, 100, 200, 500],    # XGBoost can overfit with too many trees.
             'classifier__max_depth': [2,3,4,5],
@@ -113,32 +61,17 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
     }
 
     models = {
-        'RandomForest': RandomForestClassifier(random_state=42),
-        'LogisticRegression': LogisticRegression(random_state=42, max_iter=10000, solver="saga"),
-        'SVM': SVC(probability=True, random_state=42),
-        'XGBoost': xgb.XGBClassifier(random_state=42, eval_metric='logloss')
+        #'RandomForest': RandomForestClassifier(random_state=42, monotonic_cst={"wave_height": -1, "wind_magnitude": -1, "west_wind": -1, "east_wind": -1, "south_wind": -1, "north_wind": -1}),
+        'XGBoost': xgb.XGBClassifier(random_state=42, eval_metric='logloss', monotone_constraints={"wave_height": -1, "wind_magnitude": -1, "west_wind": -1, "east_wind": -1, "south_wind": -1, "north_wind": -1})
     }
 
     print(f"\n{'=' * 80}")
 
-    def model_to_pipeline(model_name):
-        if model_name == 'SVM':
-            return Pipeline([
-                ('months', SinCosMonths()),
-                ('scaler', StandardScaler()),
-                ('classifier', models[model_name])
-            ])
-        elif model_name == 'LogisticRegression':
-            return Pipeline([
-                ('months', SinCosMonths()),
-                ('abs_wind', AbsWind()),
-                ('scaler', StandardScaler()),
-                ('classifier', models[model_name])
-            ])
-        else:
-            return Pipeline([
-                ('classifier', models[model_name])
-            ])
+    def model_to_pipeline(model_name):        
+        return Pipeline([
+            ('directional_winds', AbsWind()),
+            ('classifier', models[model_name])
+        ])
     
     def train_model_with_name(model_name, data_X, data_Y):
         print(f"\nTraining {model_name} on {len(data_X)} samples with {data_Y.sum()} positive cases")

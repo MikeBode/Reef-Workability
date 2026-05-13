@@ -8,9 +8,7 @@ class WindWaveConstraintAnalysis:
     def compute_constraints(self):
         # We get the 1st and 99th percentile of u, v, wind magnitude, and wave height for each month.
         # This is to draw a realistic box of weather conditions for later graphing.
-        self.quantiles_by_month = self.reef_centroid_weather_df[["month", "hs", "u_wind", "v_wind", "wind_magnitude"]].groupby('month').quantile([0.01, 0.99]).unstack(level=1)
-
-        print(self.quantiles_by_month)
+        self.quantiles_by_month = self.reef_centroid_weather_df[["month", "wave_height", "u_wind", "v_wind", "wind_magnitude"]].groupby('month').quantile([0.01, 0.99]).unstack(level=1)
     
     def get_quantiles_for_month(self, month, attribute):
         if not hasattr(self, 'quantiles_by_month'):

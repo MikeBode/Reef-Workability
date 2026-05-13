@@ -8,6 +8,7 @@ from models.model_training import train_and_evaluate_probability_models
 from data_processing.extraction.extract_historical_whacs_for_centroids import extract_historical_whacs_for_centroids
 from data_processing.processing.predict_reef_date_success_probabilities import predict_success_prob_for_reef_visits
 from visualization.constrained_probability_heatmaps import plot_workability_heatmaps_with_constraints
+from models.monotonic_model_training import train_and_evaluate_probability_models as train_monotonic_models
 
 import pathlib
 
@@ -46,9 +47,17 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
     # Training our models.
     best_model_path = download_folder / "best_model.pickle"
     if not best_model_path.exists():
+        print("Training best unconstrained model")
         train_and_evaluate_probability_models(merged_df, best_model_path)
     else:
         print("Best model already exists, skipping training.")
+
+    best_monotonic_model_path = download_folder / "best_monotonic_model.pickle"
+    if not best_monotonic_model_path.exists():
+        print("Training best monotonic model")
+        train_monotonic_models(merged_df, best_monotonic_model_path)
+    else:
+        print("Best monotonic model already exists, skipping training.")
 
     # Now, let's do the setup for batch workability prediction.
     centroid_whacs_path = download_folder / "centroid_historical_whacs.csv"
@@ -66,7 +75,7 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
         historical_centroid_weather_data.to_csv(centroid_whacs_path, index=False)
     
     # Predict workability for each centroid-day combination, using the best model.
-    predicted_workability_path = download_folder / "predicted_workability_for_centroids.csv"
+    """     predicted_workability_path = download_folder / "predicted_workability_for_centroids.csv"
     if predicted_workability_path.exists():
         print(f"Loading cached predicted workability for centroids from {predicted_workability_path}")
         predicted_workability = pd.read_csv(predicted_workability_path)
@@ -74,9 +83,10 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
         print("Predicting workability for each centroid-day combination, this also may take a long while...")
         predicted_workability = predict_success_prob_for_reef_visits(best_model_path, historical_centroid_weather_data)
         predicted_workability.to_csv(download_folder / "predicted_workability_for_centroids.csv", index=False)
-    
+    """    
     # Output graphs
     plot_workability_heatmaps_with_constraints(best_model_path, historical_centroid_weather_data, save_directory=pathlib.Path("PlotOutputs/heatmaps"))
+    plot_workability_heatmaps_with_constraints(best_monotonic_model_path, historical_centroid_weather_data, save_directory=pathlib.Path("PlotOutputs/monotonic_heatmaps"))
 
 if __name__ == "__main__":
     download_and_process_all_data()

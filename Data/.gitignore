@@ -15,3 +15,4 @@ best_calibrated_model.pkl
 partial_historical_whacs/*
 partial_historical_whacs
 *.pickle
+centroid_historical_whacs.csv
