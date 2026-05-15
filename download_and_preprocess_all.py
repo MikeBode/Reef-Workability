@@ -1,4 +1,3 @@
-from data_processing.collection.download_nopp_hindcast import download_files as download_nopp_hindcast_files
 from data_processing.collection.download_australian_whacs import download_whacs_files
 from data_processing.processing.merge_reef_coordinates import merge_reef_datasets
 from data_processing.extraction.extract_whacs_for_visits import construct_csvs_with_weather_data
@@ -68,7 +67,8 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
         print("Predicting workability for each centroid-day combination, this also may take a long while...")
         predicted_workability = predict_success_prob_for_reef_visits(best_model_path, historical_centroid_weather_data)
         predicted_workability.to_csv(download_folder / "predicted_workability_for_centroids.csv", index=False)
-    """    
+    """
+
     # Output graphs
     plot_workability_heatmaps_with_constraints(best_model_path, historical_centroid_weather_data, save_directory=pathlib.Path("PlotOutputs/heatmaps"))
     plot_workability_heatmaps_with_constraints(best_monotonic_model_path, historical_centroid_weather_data, save_directory=pathlib.Path("PlotOutputs/monotonic_heatmaps"))

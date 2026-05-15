@@ -64,13 +64,13 @@ class ModelAndCalibrationCurve:
         self.model = model
         self.calibration_curve = calibration_curve
     
-    def predict_proba(self, X):
+    def predict_proba_base(self, X):
         return self.calibration_curve.calibrate(self.model.predict_proba(X))
 
     def __repr__(self) -> str:
         return f"ModelAndCalibrationCurve(model_name={self.model_name}"
     
-MODEL_FEATURES = ['wave_height', 'u_wind', 'v_wind', 'wind_magnitude', 'month']
+MODEL_FEATURES = ['wave_height', 'u_wind', 'v_wind', 'wind_magnitude', 'day_of_year']
 
 def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.Path, model_stats_save_path: pathlib.Path):
     # We aim to train calibrated probability models, then evaluate them by their Brier Skill Scores.
@@ -186,7 +186,7 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
         return model
 
     def get_brier_skill_score(model):
-        test_y_probs = model.predict_proba(X_test)[:, 1]
+        test_y_probs = model.predict_proba_base(X_test)[:, 1]
         brier_score = brier_score_loss(y_test, test_y_probs)
         brief_reference_score = brier_score_loss(y_test, [y_test.mean()] * len(y_test))
         return 1 - (brier_score / brief_reference_score) if brief_reference_score > 0 else 0
@@ -212,7 +212,7 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
             model_stats[model_name][f"{name}_f1"] = f1_score(y_test, model.model.predict(X_test), pos_label=pos_label)
             model_stats[model_name][f"{name}_precision"] = precision_score(y_test, model.model.predict(X_test), pos_label=pos_label)
             model_stats[model_name][f"{name}_recall"] = recall_score(y_test, model.model.predict(X_test), pos_label=pos_label)
-            model_stats[model_name][f"{name}_precision_recall_curve"] = precision_recall_curve(y_test, model.model.predict_proba(X_test), pos_label=pos_label)
+            model_stats[model_name][f"{name}_precision_recall_curve"] = precision_recall_curve(y_test, model.model.predict_proba(X_test)[:, 1], pos_label=pos_label)
     
     # Retraining our best model on the full dataset.
     best_model = train_model_with_name(best_model_name, combined_df[MODEL_FEATURES], combined_df['was_successful'].astype(int))
