@@ -12,7 +12,7 @@ from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV, train_test_split, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import brier_score_loss
+from sklearn.metrics import brier_score_loss, f1_score, precision_score, recall_score, precision_recall_curve
 import ml_insights as mli
 import xgboost as xgb
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -25,10 +25,10 @@ class SinCosMonths(BaseEstimator, TransformerMixin):
     
     def transform(self, X):
         X_new = X.copy()
-        X_new["month_sin"] = np.sin(2 * np.pi * X_new["month"] / 12)
-        X_new["month_cos"] = np.cos(2 * np.pi * X_new["month"] / 12)
+        X_new["day_sin"] = np.sin(2 * np.pi * X_new["day_of_year"] / 365)
+        X_new["day_cos"] = np.cos(2 * np.pi * X_new["day_of_year"] / 365)
 
-        X_new.drop(columns=["month"], inplace=True)
+        X_new.drop(columns=["day_of_year"], inplace=True)
         return X_new
     
 class AbsWind(BaseEstimator, TransformerMixin):
@@ -72,7 +72,7 @@ class ModelAndCalibrationCurve:
     
 MODEL_FEATURES = ['wave_height', 'u_wind', 'v_wind', 'wind_magnitude', 'month']
 
-def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.Path, brier_skill_scores_path: pathlib.Path):
+def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.Path, model_stats_save_path: pathlib.Path):
     # We aim to train calibrated probability models, then evaluate them by their Brier Skill Scores.
     train_data, test_data = train_test_split(combined_df, test_size=0.25, stratify=combined_df["was_successful"], random_state=42)
 
@@ -193,7 +193,7 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
 
     best_brier_skill_score = float('-inf')
     best_model_name = None
-    brier_scores = {}
+    model_stats = {}
 
     for model_name, _ in models.items():
         model = train_model_with_name(model_name, X_train, y_train)
@@ -205,7 +205,14 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
             best_brier_skill_score = brier_skill_score
             best_model_name = model_name
         
-        brier_scores[model_name] = brier_skill_score
+        model_stats[model_name] = {}
+        model_stats[model_name]["brier_skill_score"] = brier_skill_score
+
+        for (name, pos_label) in [("success", 1), ("failure", 1)]:
+            model_stats[model_name][f"{name}_f1"] = f1_score(y_test, model.model.predict(X_test), pos_label=pos_label)
+            model_stats[model_name][f"{name}_precision"] = precision_score(y_test, model.model.predict(X_test), pos_label=pos_label)
+            model_stats[model_name][f"{name}_recall"] = recall_score(y_test, model.model.predict(X_test), pos_label=pos_label)
+            model_stats[model_name][f"{name}_precision_recall_curve"] = precision_recall_curve(y_test, model.model.predict_proba(X_test), pos_label=pos_label)
     
     # Retraining our best model on the full dataset.
     best_model = train_model_with_name(best_model_name, combined_df[MODEL_FEATURES], combined_df['was_successful'].astype(int))
@@ -216,5 +223,5 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
     with open(model_save_path, 'wb') as f:
         pickle.dump(best_model, f)
     
-    with open(brier_skill_scores_path, "wb") as f:
-        pickle.dump(brier_scores, f)
+    with open(model_stats_save_path, "wb") as f:
+        pickle.dump(model_stats, f)

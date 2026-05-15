@@ -8,21 +8,12 @@ from models.model_training import train_and_evaluate_probability_models
 from data_processing.extraction.extract_historical_whacs_for_centroids import extract_historical_whacs_for_centroids
 from data_processing.processing.predict_reef_date_success_probabilities import predict_success_prob_for_reef_visits
 from visualization.constrained_probability_heatmaps import plot_workability_heatmaps_with_constraints
-from models.monotonic_model_training import train_and_evaluate_probability_models as train_monotonic_models
 
 import pathlib
 
 # TODO: Look into failures. Make it throw on failure, accumulate all throws at end.
 
 def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(__file__).parent / "Data"):
-    # This is a little hacky, but keeps us from repeating a download.
-    nopp_milestone = download_folder / "meta" / "nopp_hindcast_download_complete.txt"
-    if not nopp_milestone.exists():
-        # First we download the NOPP hindcast data.
-        download_nopp_hindcast_files(1990, 2008, download_folder / "nopp-phase2", max_workers=5)
-        nopp_milestone.parent.mkdir(parents=True, exist_ok=True)
-        nopp_milestone.touch()
-
     # Then we download WHACS data.
     print("Starting WHACS download, this may take a long while...")
     whacs_milestone = download_folder / "meta" / "whacs_download_complete.txt"
@@ -46,19 +37,12 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
 
     # Training our models.
     best_model_path = download_folder / "best_model.pickle"
-    brier_skill_score_path = download_folder / "brier_skills.pickle"
+    model_stats = download_folder / "model_stats.pickle"
     if not best_model_path.exists():
         print("Training best unconstrained model")
-        train_and_evaluate_probability_models(merged_df, best_model_path, brier_skill_score_path)
+        train_and_evaluate_probability_models(merged_df, best_model_path, model_stats)
     else:
         print("Best model already exists, skipping training.")
-
-    best_monotonic_model_path = download_folder / "best_monotonic_model.pickle"
-    if not best_monotonic_model_path.exists():
-        print("Training best monotonic model")
-        train_monotonic_models(merged_df, best_monotonic_model_path)
-    else:
-        print("Best monotonic model already exists, skipping training.")
 
     # Now, let's do the setup for batch workability prediction.
     centroid_whacs_path = download_folder / "centroid_historical_whacs.csv"

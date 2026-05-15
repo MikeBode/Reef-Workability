@@ -27,6 +27,7 @@ def extract_historical_whacs_for_centroids_in_month(centroids: list[tuple[float,
 
             rows.append({
                 "centroid_index": i,
+                "day_of_year": int(target_month_start.strftime('%j')),
                 "month": target_month_start.month,
                 "y": y,
                 "x": x,
