@@ -45,6 +45,18 @@ class AbsWind(BaseEstimator, TransformerMixin):
         X_new.drop(columns=["u_wind", "v_wind"], inplace=True)
         return X_new
 
+class WindDirectionColumns(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X_new = X.copy()
+        direction = np.atan2(X_new["v_wind"], X_new["u_wind"])
+        X_new["wind_cos"] = np.cos(direction)
+        X_new["wind_sin"] = np.sin(direction)
+
+        X_new.drop(columns=["u_wind", "v_wind"], inplace=True)
+        return X_new
 
 class ModelAndCalibrationCurve:
     def __init__(self, model_name, model, calibration_curve):
@@ -60,7 +72,7 @@ class ModelAndCalibrationCurve:
     
 MODEL_FEATURES = ['wave_height', 'u_wind', 'v_wind', 'wind_magnitude', 'month']
 
-def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.Path):
+def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.Path, brier_skill_scores_path: pathlib.Path):
     # We aim to train calibrated probability models, then evaluate them by their Brier Skill Scores.
     train_data, test_data = train_test_split(combined_df, test_size=0.25, stratify=combined_df["was_successful"], random_state=42)
 
@@ -94,7 +106,11 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
             'classifier__min_samples_split': [2, 3, 5],
             'classifier__min_samples_leaf': [1, 2, 4]
         },
-        "LogisticRegression": {
+        "LogisticRegression4Comp": {
+            'classifier__C': [0.01, 0.1, 1, 10, 100],
+            'classifier__l1_ratio': [0, 0.5, 1],
+        },
+        "LogisticRegressionDirection": {
             'classifier__C': [0.01, 0.1, 1, 10, 100],
             'classifier__l1_ratio': [0, 0.5, 1],
         },
@@ -114,7 +130,8 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
 
     models = {
         'RandomForest': RandomForestClassifier(random_state=42),
-        'LogisticRegression': LogisticRegression(random_state=42, max_iter=10000, solver="saga"),
+        'LogisticRegression4Comp': LogisticRegression(random_state=42, max_iter=10000, solver="saga"),
+        'LogisticRegressionDirection': LogisticRegression(random_state=42, max_iter=10000, solver="saga"),
         'SVM': SVC(probability=True, random_state=42),
         'XGBoost': xgb.XGBClassifier(random_state=42, eval_metric='logloss')
     }
@@ -128,15 +145,21 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
                 ('scaler', StandardScaler()),
                 ('classifier', models[model_name])
             ])
-        elif model_name == 'LogisticRegression':
+        elif 'LogisticRegression' in model_name:
+            if model_name == "LogisticRegression4Comp":
+                wind_transform = ('abs_wind', AbsWind())
+            else:
+                wind_transform = ('dir_wind', WindDirectionColumns())
+
             return Pipeline([
                 ('months', SinCosMonths()),
-                ('abs_wind', AbsWind()),
+                wind_transform,
                 ('scaler', StandardScaler()),
                 ('classifier', models[model_name])
             ])
         else:
             return Pipeline([
+                ('months', SinCosMonths()),
                 ('classifier', models[model_name])
             ])
     
@@ -170,6 +193,7 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
 
     best_brier_skill_score = float('-inf')
     best_model_name = None
+    brier_scores = {}
 
     for model_name, _ in models.items():
         model = train_model_with_name(model_name, X_train, y_train)
@@ -180,12 +204,17 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
         if brier_skill_score > best_brier_skill_score:
             best_brier_skill_score = brier_skill_score
             best_model_name = model_name
+        
+        brier_scores[model_name] = brier_skill_score
     
     # Retraining our best model on the full dataset.
     best_model = train_model_with_name(best_model_name, combined_df[MODEL_FEATURES], combined_df['was_successful'].astype(int))
     print(f"Saving best model: {best_model}, with Testing Brier Skill Score: {best_brier_skill_score:.8f}, into {model_save_path}")
 
     # Quick sanity test
-    print(f"Sanity test, Best Model Brier (On test) = {get_brier_skill_score(best_model):.8f}")
+    print(f"Sanity test, Best Model Brier (On test (now present in Training)) = {get_brier_skill_score(best_model):.8f}")
     with open(model_save_path, 'wb') as f:
         pickle.dump(best_model, f)
+    
+    with open(brier_skill_scores_path, "wb") as f:
+        pickle.dump(brier_scores, f)

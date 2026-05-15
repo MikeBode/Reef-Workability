@@ -46,9 +46,10 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
 
     # Training our models.
     best_model_path = download_folder / "best_model.pickle"
+    brier_skill_score_path = download_folder / "brier_skills.pickle"
     if not best_model_path.exists():
         print("Training best unconstrained model")
-        train_and_evaluate_probability_models(merged_df, best_model_path)
+        train_and_evaluate_probability_models(merged_df, best_model_path, brier_skill_score_path)
     else:
         print("Best model already exists, skipping training.")
 
