@@ -68,8 +68,11 @@ class ModelAndCalibrationCurve:
     def predict_proba_base(self, X):
         return self.calibration_curve.calibrate(self.model.predict_proba(X))
     
+    def proba_to_success_prob(self, proba):
+        return (proba[:,1] * (1/self.success_samples_equiv))/(proba[:,1] * (1/self.success_samples_equiv) + proba[:,0] * (1/self.failure_samples_equiv))
+    
     def predict_success_probs(self, X):
-        return (X[:,1] * self.success_samples_equiv)/(X[:,1] * self.success_samples_equiv + X[:,0] * self.failure_samples_equiv)
+        return self.proba_to_success_prob(self.predict_proba_base(X))
 
     def __repr__(self) -> str:
         return f"ModelAndCalibrationCurve(model_name={self.model_name}"
@@ -185,7 +188,7 @@ def train_and_evaluate_probability_models(combined_df, model_save_path: pathlib.
         calib = mli.SplineCalib()
         calib.fit(cv_preds_train, data_Y)
         search.fit(data_X, data_Y)
-        model = ModelAndCalibrationCurve(model_name, search.best_estimator_, calib, sum(data_Y), sum(1-data_Y), 0.1)        # TODO: Replace this 0.1 with a better estimate based on data.
+        model = ModelAndCalibrationCurve(model_name, search.best_estimator_, calib, sum(data_Y), sum(1-data_Y), 0.9)        # TODO: Replace this 0.9 with a better estimate based on data.
 
         return model
 

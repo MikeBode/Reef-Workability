@@ -27,6 +27,8 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
     noaa_milestone = download_folder / "meta"/ "noaa_download_complete.txt"
     if not noaa_milestone.exists():
         download_noaa_ww3(download_folder / "noaa_ww3")
+    
+    print("Downloads finished")
 
     # Now, we merge the coordinates from our surveyData and our COTS data.
     cots_with_coords = merge_reef_datasets(download_folder / 'surveyData[63].csv',
@@ -50,6 +52,9 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
         train_and_evaluate_probability_models(merged_df, best_model_path, model_stats)
     else:
         print("Best model already exists, skipping training.")
+    
+    bpm_success_predictions = predict_success_prob_for_reef_visits(best_model_path, merge_visit_dfs([bpm_visits_with_weather], ["bpm"], [False]))
+    bpm_success_predictions.to_csv(download_folder / "bpm_probs.csv")
 
     # Now, let's do the setup for batch workability prediction.
     centroid_whacs_path = download_folder / "centroid_historical_whacs.csv"

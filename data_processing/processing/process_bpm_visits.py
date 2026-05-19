@@ -59,13 +59,14 @@ def process_bpm_visits(bpm_failure_path: pathlib.Path, noaa_ww3_base_path: pathl
 
     noaa_weather_extractor = NoaaWW3Extractor(noaa_ww3_base_path)
 
-    bpm_failures["Date"] = pd.to_datetime(bpm_failures['Date'], dayfirst=True)
+    bpm_failures["date"] = pd.to_datetime(bpm_failures['Date'], dayfirst=True)
+    bpm_failures.drop(columns=["Date"], inplace=True)
     bpm_failures['wave_height'] = np.nan
     bpm_failures['u_wind'] = np.nan
     bpm_failures['v_wind'] = np.nan
 
     for idx, row in bpm_failures.iterrows():
-        date = row['Date']
+        date = row['date']
         x_coord = row['x']
         y_coord = row['y']
         wave_height = noaa_weather_extractor.extract_batch_daytime_hours_mean_by_parameter("Thgt", date, np.array([[x_coord, y_coord]]))[0]
