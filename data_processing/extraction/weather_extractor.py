@@ -65,8 +65,8 @@ class NetCDFWeatherExtractor:
 
             results = []
             for lon, lat in coords_array:
-                closest_i = int(np.round((lat - grid_info['lat_delta']/2 - grid_info['min_lat']) / grid_info['lat_delta']))
-                closest_j = int(np.round((lon - grid_info['lon_delta']/2 - grid_info['min_lon']) / grid_info['lon_delta']))
+                closest_i = int(np.round((lat + grid_info['lat_delta']/2 - grid_info['min_lat']) / grid_info['lat_delta']))
+                closest_j = int(np.round((lon + grid_info['lon_delta']/2 - grid_info['min_lon']) / grid_info['lon_delta']))
                 for d_j, d_i in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0)]:
                     adj_i = closest_i + d_i
                     adj_j = closest_j + d_j
