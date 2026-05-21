@@ -9,6 +9,7 @@ from data_processing.processing.predict_reef_date_success_probabilities import p
 from visualization.constrained_probability_heatmaps import plot_workability_heatmaps_with_constraints
 from data_processing.collection.download_noaa_ww3 import download_noaa_ww3
 from data_processing.processing.process_bpm_visits import process_bpm_visits
+from data_processing.collection.download_era5_data import download_all_era5_data
 
 import pathlib
 
@@ -23,10 +24,13 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
         whacs_milestone.touch()
     
     # Then the noaa data.
-    print("Starting NOAA WW3 download")
-    noaa_milestone = download_folder / "meta"/ "noaa_download_complete.txt"
-    if not noaa_milestone.exists():
-        download_noaa_ww3(download_folder / "noaa_ww3")
+    #print("Starting NOAA WW3 download")
+    #noaa_milestone = download_folder / "meta"/ "noaa_download_complete.txt"
+    #if not noaa_milestone.exists():
+    #    download_noaa_ww3(download_folder / "noaa_ww3")
+    
+    # Then ERA5 (will remove other sources soon if this works well).
+    download_all_era5_data(download_folder / "era5")
     
     print("Downloads finished")
 
