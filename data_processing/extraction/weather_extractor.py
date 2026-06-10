@@ -68,22 +68,26 @@ class NetCDFWeatherExtractor:
             for lon, lat in coords_array:
                 closest_i = int(np.round((lat - grid_info['min_lat']) / grid_info['lat_delta']))
                 closest_j = int(np.round((lon - grid_info['min_lon']) / grid_info['lon_delta']))
+                candidates = []
                 for d_j, d_i in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0)]:
                     adj_i = closest_i + d_i
                     adj_j = closest_j + d_j
-
                     if adj_i < 0 or adj_i >= grid_info['lat_len'] or adj_j < 0 or adj_j >= grid_info['lon_len']:
                         continue
+                    cand_lon = grid_info['min_lon'] + adj_j * grid_info['lon_delta']
+                    cand_lat = grid_info['min_lat'] + adj_i * grid_info['lat_delta']
+                    dist_sq = (lon - cand_lon) ** 2 + (lat - cand_lat) ** 2
+                    candidates.append((dist_sq, adj_i, adj_j))
+                candidates.sort()
 
+                for k, (_, adj_i, adj_j) in enumerate(candidates):
                     mean_value = ds_subset[param_name].isel(
                         latitude=adj_i, longitude=adj_j
                     ).mean().item()
 
-                    if not np.isnan(mean_value) or d_j == -1:
+                    if not np.isnan(mean_value) or k == len(candidates) - 1:
                         results.append(mean_value)
                         break
-                    else:
-                        continue
 
             return np.array(results)
 

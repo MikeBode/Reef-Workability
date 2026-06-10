@@ -40,6 +40,19 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
         train_and_evaluate_probability_models(merged_df, best_model_path, model_stats)
     else:
         print("Best model already exists, skipping training.")
+
+    # Regenerate visualization notebook
+    print("Regenerating notebook")
+    with open("report_visualizations.ipynb") as ff:
+        nb_in = nbformat.read(ff, nbformat.NO_CONVERT)
+        
+    ep = ExecutePreprocessor(timeout=600, kernel_name='python3')
+
+    ep.preprocess(nb_in)
+    
+    with open('report_visualizations.ipynb', 'w', encoding='utf-8') as f:
+        nbformat.write(nb_in, f)
+    print("Notebook fully regenerated")
     
     # Now, let's do the setup for batch workability prediction.
     centroid_era5_path = download_folder / "centroid_historical_era5.csv"
@@ -69,19 +82,6 @@ def download_and_process_all_data(download_folder: pathlib.Path = pathlib.Path(_
 
     # Output daily predicted workabilities.
     #split_into_daily_subsets(2013, predicted_workability, download_folder / "yearly_subsetted_data")
-
-    # Regenerate visualization notebook
-    print("Regenerating notebook")
-    with open("report_visualizations.ipynb") as ff:
-        nb_in = nbformat.read(ff, nbformat.NO_CONVERT)
-        
-    ep = ExecutePreprocessor(timeout=600, kernel_name='python3')
-
-    ep.preprocess(nb_in)
-    
-    with open('report_visualizations.ipynb', 'w', encoding='utf-8') as f:
-        nbformat.write(nb_in, f)
-    print("Notebook fully regenerated")
 
     # Output graphs
     plot_workability_heatmaps_with_constraints(predicted_workability, save_directory=pathlib.Path("PlotOutputs/heatmaps"))
